@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "TGuide",
+    "slug": "TGuide",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "scheme": "tguide",
+    "ios": {
+      "supportsTablet": true,
+      "requireFullScreen": true
+    },
+    "android": {
+      "permissions": ["READ_MEDIA_IMAGES"],
+      "plugins": [
+        [
+          "expo-image-picker",
+          {
+            "photosPermission": "Приложению нужен доступ к галерее, чтобы добавить фото места."
+          }
+        ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      
+      "softwareKeyboardLayoutMode": "pan",
+      "navigationBar": {
+        "visible": "immersive", 
+        "backgroundColor": "#00000000",
+        "barStyle": "dark-content"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "platforms": ["ios", "android", "web"]
+  }
+}
