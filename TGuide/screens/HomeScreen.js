@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Button, Platform, Image, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, Button, Platform, Image, TextInput, TouchableOpacity, ScrollView, FlatList } from 'react-native';
 import { SafeAreaView  } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/authContext';
@@ -24,6 +24,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPlaces, setFilteredPlaces] = useState([]);
   const [activeCategory, setActiveCategory] = useState('Всё');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [favorites, setFavorites] = useState([]);
   const { user } = useAuth();
   const USER_ID = user?.id || user?.user_id;
@@ -38,6 +39,11 @@ export default function HomeScreen() {
   const isFavorite = (placeId) => favorites.includes(toId(placeId));
 
   const loadFavorites = async () => {
+    if (!USER_ID) {
+      setFavorites([]);
+      return;
+    }
+
     try {
       const { data } = await back.get('/favorites', { params: { userId: USER_ID } });
       setFavorites((data || []).map((f) => toId(f.place_id)));
@@ -62,8 +68,6 @@ export default function HomeScreen() {
 
       await back.post('/favorites', { userId: USER_ID, placeId: id });
       setFavorites((prev) => (prev.includes(id) ? prev : [...prev, id]));
-
-      await loadFavorites();
     } catch (err) {
       if (err.response?.status === 409) {
         setFavorites((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -89,40 +93,12 @@ export default function HomeScreen() {
       }
     });
   };
-  
-  {/* Функция преобразования времени */}
-  const isOpenPlace = (place) => {
-    if (typeof place.place_status === 'string') {
-      return place.place_status.toLowerCase().includes('открыт');
-    }
-    if (!place.openTime || !place.closeTime) {
-      return true;
-    }
-
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-
-    const [openHour, openMinute] = place.openTime.split(':').map(Number);
-    const [closeHour, closeMinute] = place.closeTime.split(':').map(Number);
-
-    const currentTotalMinutes = currentHour * 60 + currentMinute;
-    const openTotalMinutes = openHour * 60 + openMinute;
-    const closeTotalMinutes = closeHour * 60 + closeMinute;
-
-    return currentTotalMinutes >= openTotalMinutes &&
-          currentTotalMinutes < closeTotalMinutes;
-  };
 
   {/* Начальные фильтры, их состояние и их изменение */}
   const [filters, setFilters] = useState({
     category: "Всё",
     minRating: 0,
-    maxPrice: null,
-    openTime: null,
-    closeTime: null,
     onlyFavorites: false,
-    onlyOpen: false
   });
 
   {/* Функция фильтрации */}
@@ -139,15 +115,7 @@ export default function HomeScreen() {
         return false
       }
 
-      if (filters.maxPrice !== null && place.place_price > filters.maxPrice) {
-        return false;
-      }
-
-      if (filters.onlyFavorites && !favorite(place.place_id)) {
-        return false;
-      }
-
-      if (filters.onlyOpen && !isOpenPlace(place)) {
+      if (filters.onlyFavorites && !isFavorite(place.place_id)) {
         return false;
       }
 
@@ -155,15 +123,20 @@ export default function HomeScreen() {
     })
   };
 
-
-
-  {/* Фильтрация мест !под вопросом, надо будет менять! */}
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim().toLowerCase());
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  {/* Фильтрация мест */}
+  const visiblePlaces = useMemo(() => {
     let filtered = places;
 
-    if (searchQuery.trim() !== '') {
+    if (debouncedSearchQuery !== '') {
       filtered = filtered.filter(place =>
-        place.place_name.toLowerCase().includes(searchQuery.toLowerCase())
+        place.place_name?.toLowerCase().includes(debouncedSearchQuery)
       );
     }
 
@@ -177,8 +150,8 @@ export default function HomeScreen() {
     }
     filtered = filterPlaces(filtered);
 
-    setFilteredPlaces(filtered);
-  }, [searchQuery, activeCategory, places, filters, favorites]);
+    return filtered;
+  }, [debouncedSearchQuery, activeCategory, places, filters, favorites]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -206,6 +179,45 @@ export default function HomeScreen() {
     );
   }
 
+  const renderPlaceCard = ({ item: place }) => (
+    <View key={place.place_id} style={styles.placeCard}>
+      <Image
+        style={styles.placeImage}
+        source={
+          place.place_image ? { uri: place.place_image } : require('../assets/images/placeHolder.png')
+        }
+        resizeMode="cover"
+      />
+
+      <View style={styles.placeContent}>
+        <View style={styles.placeHeader} >
+          <TouchableOpacity style={styles.placeTitleContainer} onPress={() => {openPlaceDetail(place)}}>
+            <Text style={styles.placeTitle}>{place.place_name}</Text>
+            <Image source={require('../assets/images/ArrowIcon.png')} style={styles.placeDetailIndicator}/>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => toggleFavorite(place.place_id)}>
+            <Text style={styles.favoriteIcon}>
+              {isFavorite(place.place_id) ? '♥️' : '🤍'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.placeCategory}>{place.place_category}</Text>
+        </View>
+
+        <Text style={styles.placeDescription}>{place.short_description}</Text>
+
+        <View  style={styles.placeDetails}>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>⭐ {place.place_rating}</Text>
+          </View>
+          
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>📍 {place.place_address}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView  style={styles.container}>
@@ -265,67 +277,20 @@ export default function HomeScreen() {
         {/* Заголовок раздела */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{activeCategory}</Text>
-          <Text style={styles.sectionCount}>{filteredPlaces.length} мест</Text>
+          <Text style={styles.sectionCount}>{visiblePlaces.length} мест</Text>
         </View>
 
-        <ScrollView
+        <FlatList
         style={styles.objectCards}
+        data={visiblePlaces}
+        keyExtractor={(item) => String(item.place_id)}
+        renderItem={renderPlaceCard}
         showsVerticalScrollIndicator={false}
-        >
-          {
-            filteredPlaces.map(place =>
-              <View key={place.place_id} style={styles.placeCard}>
-                {/* Изображение */}
-                <Image
-                style={[
-                  styles.placeImage
-                ]}
-                source={ 
-                  place.place_image ? { uri: place.place_image } : require('../assets/images/placeHolder.png')
-                }
-                resizeMode="cover"
-                />
-
-                {/* Контент карточки */}
-                <View style={styles.placeContent}>
-                  <View style={styles.placeHeader} >
-                    <TouchableOpacity style={styles.placeTitleContainer} onPress={() => {openPlaceDetail(place)}}>
-                      <Text style={styles.placeTitle}>{place.place_name}</Text>
-
-                      <Image source={require('../assets/images/ArrowIcon.png')} style={styles.placeDetailIndicator}/>
-                    </TouchableOpacity>
-
-                    {/* Кнопка избранного */}
-                    <TouchableOpacity onPress={() => toggleFavorite(place.place_id)}>
-                      <Text style={styles.favoriteIcon}>
-                        {isFavorite(place.place_id) ? '♥️' : '🤍'}
-                      </Text>
-                    </TouchableOpacity>
-                    <Text style={styles.placeCategory}>{place.place_category}</Text>
-                  </View>
-
-                  <Text style={styles.placeDescription}>{place.short_description}</Text>
-
-                  <View  style={styles.placeDetails}>
-                    <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>⭐ {place.place_rating}</Text>
-                    </View>
-                    
-                    <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>📍 {place.place_address}</Text>
-                    </View>
-
-                    <View style={styles.detailItem}>
-                        <Text style={[styles.detailLabel, styles.openStatus]}>
-                          🕒 {place.place_status}
-                        </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            )
-          }
-        </ScrollView>
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        removeClippedSubviews
+        />
       </View>
 
     </SafeAreaView >
@@ -464,6 +429,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#666',
   },
+  objectCards: {
+    flex: 1,
+  },
   placeCard:
   {
     backgroundColor: 'white',
@@ -533,8 +501,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  openStatus: {
-    color: '#2ecc71',
-    fontWeight: '500',
-  },
 });
+

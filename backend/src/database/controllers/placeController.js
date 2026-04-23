@@ -1,9 +1,42 @@
 const pool = require('../config/db');
 const Place = require('../models/placeModel');
 
+const toNumberOrUndefined = (value) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+};
+
 exports.getPlaces = async (req, res) => {
     try {
-        const place = await Place.getAll();
+        const {
+            category,
+            q,
+            minRating,
+            maxRating,
+            minPrice,
+            maxPrice,
+            sortBy,
+            sortOrder,
+            limit,
+            offset,
+        } = req.query;
+
+        const filters = {
+            category,
+            q,
+            sortBy,
+            sortOrder,
+            minRating: toNumberOrUndefined(minRating),
+            maxRating: toNumberOrUndefined(maxRating),
+            minPrice: toNumberOrUndefined(minPrice),
+            maxPrice: toNumberOrUndefined(maxPrice),
+            limit: Math.min(toNumberOrUndefined(limit) ?? 100, 500),
+            offset: Math.max(toNumberOrUndefined(offset) ?? 0, 0),
+        };
+
+        const place = await Place.getAll(filters);
+        
         res.status(200).json(place);
     } catch (err) { res.status(500).json({ error: err.message }); }
 };

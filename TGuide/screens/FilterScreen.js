@@ -17,10 +17,6 @@ export default function FilterScreen({navigation, route}) {
   const [filters, setFilters] = useState(currentFilters || {
     category: "Всё",
     minRating: 0,
-    maxPrice: null,
-    openTime: null,
-    closeTime: null,
-    onlyOpen: false,
     onlyFavorites: false
   })
 
@@ -37,10 +33,6 @@ export default function FilterScreen({navigation, route}) {
     setFilters({
     category: "Всё",
     minRating: 0,
-    maxPrice: null,
-    openTime: null,
-    closeTime: null,
-    onlyOpen: false,
     onlyFavorites: false
     });
   };
@@ -77,39 +69,6 @@ export default function FilterScreen({navigation, route}) {
             </View>
           </View>
 
-          {/* фильтрация по цене */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Максимальная цена</Text>
-            <TextInput
-            style={styles.priceTextInput}
-            placeholder="Введите максимальную цену"
-            placeholderTextColor="#999"
-            value={filters.maxPrice == null ? '' : String(filters.maxPrice)}
-            onChangeText={(text) => {
-              const numbersOnly = text.replace(/[^0-9]/g ,'');
-
-              setFilters({
-                ...filters,
-                maxPrice: numbersOnly === '' ? null : Number(numbersOnly)
-              })
-            }}
-            keyboardType="number-pad"
-            />
-          </View>
-
-          {/* Статус */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Статус</Text>
-            
-            <View style={styles.switchRow}>
-              <Text>Открыто</Text>
-              <Switch
-              value={filters.onlyOpen}
-              onValueChange={(value) => {setFilters({...filters, onlyOpen: value})}}
-              />
-            </View>
-          </View>
-
           {/* Избранное */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Избранное</Text>
@@ -121,12 +80,6 @@ export default function FilterScreen({navigation, route}) {
               onValueChange={(value) => setFilters({...filters, onlyFavorites: value})}
               />
             </View>
-
-            {/* <Text style={styles.sectionTitle}></Text>
-            <Switch
-            value={filters.onlyFavorites}
-            onValueChange={(value) => setFilters({...filters, onlyFavorites: value})}
-            /> */}
           </View>
 
         </View>
@@ -204,14 +157,6 @@ const styles = StyleSheet.create({
   ratingButtonActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
   ratingText: { fontSize: 14, color: '#666' },
   ratingTextActive: { color: '#fff', fontWeight: '600' },
-  priceTextInput: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    fontSize: 16,
-  },
   switchRowContainer: { 
     flexDirection: 'row', 
     justifyContent: 'space-between',
