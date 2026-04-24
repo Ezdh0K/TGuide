@@ -11,13 +11,10 @@ require("dotenv").config();
   const places = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
 
   const client = new Client({
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT || 5432),
-    user: process.env.DB_USER || "postgres",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "postgres",
-    ssl: false,
-    connectionTimeoutMillis: 10000,
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   });
 
   const sql = `
