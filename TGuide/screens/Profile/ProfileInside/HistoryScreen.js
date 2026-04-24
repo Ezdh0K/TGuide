@@ -11,7 +11,10 @@ export default function HistoryScreen() {
     const [historyPlaces, setHistoryPlaces] = useState([]);
     const [favorites, setFavorites] = useState([]);
     const { user } = useAuth();
-    const USER_ID = user?.id || user?.user_id;
+    const USER_ID = user?.id ?? user?.user_id ?? null;
+    if (!USER_ID) {
+        console.log("USER_ID отсутствует:", user);
+    }
     
     const goBack = () => {
         navigation.goBack();
@@ -43,6 +46,8 @@ export default function HistoryScreen() {
 
     useFocusEffect(
         useCallback(() => {
+            if (!USER_ID) return;
+            
             loadHistory();
             loadFavorites();
         }, [USER_ID])
@@ -86,7 +91,7 @@ export default function HistoryScreen() {
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}>
                 { historyPlaces.map(place => 
-                    <View key={place.id} style={styles.placeCard}>
+                    <View key={`${place.place_id}-${place.viewed_at || 'na'}`} style={styles.placeCard}>
                 
                         {/* Изображение места */}
                         <Image
