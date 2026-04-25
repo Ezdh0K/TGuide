@@ -1,10 +1,11 @@
 {
   "dependencies": {
-    "axios": "^1.14.0"
+    "axios": "^1.14.0",
+    "expo": "^55.0.17"
   },
   "name": "tguide-backend",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "TGuide/index.js",
   "scripts": {
     "start": "node server.js"
   }
